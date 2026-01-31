@@ -1,0 +1,22 @@
+# Logs et rapports generés
+logs/
+reports/
+
+# Fichiers temporaires PowerShell
+*.tmp
+*.log
+
+# Fichiers de configuration locaux (si sensibles)
+# config/local-*.json
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# VSCode
+.vscode/
+
+# IDE
+*.suo
+*.user
+*.sln.docstates

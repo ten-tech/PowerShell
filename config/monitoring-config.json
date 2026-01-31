@@ -1,0 +1,10 @@
+{
+  "services": ["W3SVC", "MSSQLSERVER", "Spooler"],
+  "thresholds": {
+    "cpu_percent": 80,
+    "memory_available_mb": 1024,
+    "disk_free_percent": 20
+  },
+  "check_interval_seconds": 300,
+  "alert_email": "tomate@example.com"
+}
