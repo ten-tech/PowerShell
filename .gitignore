@@ -1,22 +1,56 @@
-# Logs et rapports generés
+# ================================
+# System Health Monitor - .gitignore
+# ================================
+
+# Donnees generees (logs, rapports, dashboard)
 logs/
 reports/
 
-# Fichiers temporaires PowerShell
+# Fichiers temporaires
 *.tmp
-*.log
+*.temp
+*.bak
+*.cache
 
-# Fichiers de configuration locaux (si sensibles)
-# config/local-*.json
+# Configuration locale (ne pas commiter les secrets)
+config/monitoring-config.local.json
+*.local.json
+
+# PowerShell
+*.ps1xml
 
 # Windows
 Thumbs.db
 Desktop.ini
+$RECYCLE.BIN/
+*.lnk
 
-# VSCode
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
+
+# Editeurs et IDE
 .vscode/
-
-# IDE
+.idea/
 *.suo
 *.user
+*.userosscache
 *.sln.docstates
+.vs/
+
+# Environnements virtuels
+.env
+.env.local
+*.env
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+*.7z

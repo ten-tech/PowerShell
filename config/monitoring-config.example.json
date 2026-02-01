@@ -1,12 +1,12 @@
 {
-  "services": ["W3SVC", "MSSQLSERVER", "Spooler"],
+  "services": ["Spooler", "W3SVC", "MSSQLSERVER"],
   "thresholds": {
     "cpu_percent": 80,
     "memory_available_mb": 1024,
     "disk_free_percent": 20
   },
   "check_interval_seconds": 300,
-  "alert_email": "tomate@example.com",
+  "alert_email": "your-email@example.com",
   "dashboard": {
     "enabled": true,
     "auto_open": false,

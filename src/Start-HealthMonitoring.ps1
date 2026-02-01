@@ -49,6 +49,7 @@ if (-not $ConfigPath) {
 . (Join-Path -Path $scriptPath -ChildPath "Send-Alert.ps1")
 . (Join-Path -Path $scriptPath -ChildPath "Get-ServiceHealth.ps1")
 . (Join-Path -Path $scriptPath -ChildPath "Get-SystemResources.ps1")
+. (Join-Path -Path $scriptPath -ChildPath "New-HtmlDashboard.ps1")
 
 function Import-MonitoringConfig {
     <#
@@ -160,6 +161,10 @@ function Start-HealthCheck {
     if ($allAlerts.Count -gt 0) {
         $reportPath = Export-AlertReport -Alerts $allAlerts -BasePath $BasePath
         Write-Host "`n[*] Rapport exporte: $reportPath" -ForegroundColor Cyan
+
+        # Generation du dashboard HTML
+        $dashboardPath = New-HtmlDashboard -Alerts $allAlerts -BasePath $BasePath
+        Write-Host "[*] Dashboard HTML: $dashboardPath" -ForegroundColor Cyan
     }
 
     # Resume
