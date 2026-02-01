@@ -66,19 +66,21 @@ function New-HtmlDashboard {
         $memoryAlerts = $Alerts | Where-Object { $_.Type -eq "Memory" }
         $diskAlerts = $Alerts | Where-Object { $_.Type -eq "Disk" }
 
-        # Extraction des valeurs
+        # Extraction des valeurs (format: "45%" ou "1234.56 MB")
         $cpuValue = 0
         $cpuThreshold = 80
         if ($cpuAlerts) {
-            $cpuValue = [int]($cpuAlerts[0].CurrentValue -replace '[^0-9]', '')
-            $cpuThreshold = [int]($cpuAlerts[0].Threshold -replace '[^0-9]', '')
+            # CPU: extraire le nombre avant le %
+            $cpuValue = [int](($cpuAlerts[0].CurrentValue -split '%')[0])
+            $cpuThreshold = [int](($cpuAlerts[0].Threshold -split '%')[0])
         }
 
         $memoryValue = 0
         $memoryThreshold = 1024
         if ($memoryAlerts) {
-            $memoryValue = [int]($memoryAlerts[0].CurrentValue -replace '[^0-9]', '')
-            $memoryThreshold = [int]($memoryAlerts[0].Threshold -replace '[^0-9]', '')
+            # Memory: extraire le nombre avant " MB"
+            $memoryValue = [math]::Round([double](($memoryAlerts[0].CurrentValue -split ' ')[0]))
+            $memoryThreshold = [math]::Round([double](($memoryAlerts[0].Threshold -split ' ')[0]))
         }
         $memoryTotal = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1MB)
         $memoryUsed = $memoryTotal - $memoryValue
@@ -121,9 +123,10 @@ function New-HtmlDashboard {
         $diskUsedData = @()
         $diskFreeData = @()
         foreach ($disk in $diskAlerts) {
-            $diskFree = [int]($disk.CurrentValue -replace '[^0-9]', '')
+            # Disk: extraire le nombre avant le % (format: "45.67%")
+            $diskFree = [math]::Round([double](($disk.CurrentValue -split '%')[0]))
             $diskUsed = 100 - $diskFree
-            $diskThreshold = [int]($disk.Threshold -replace '[^0-9]', '')
+            $diskThreshold = [math]::Round([double](($disk.Threshold -split '%')[0]))
             $statusColor = switch ($disk.Status) {
                 "OK" { "emerald" }
                 "WARNING" { "amber" }
@@ -152,34 +155,49 @@ function New-HtmlDashboard {
 
         # Gestion de l'historique
         $historyPath = Join-Path -Path $reportsPath -ChildPath "metrics-history.json"
-        $historyData = @()
+        $historyList = [System.Collections.ArrayList]::new()
+
         if (Test-Path -Path $historyPath) {
             try {
-                $historyData = @(Get-Content -Path $historyPath -Raw | ConvertFrom-Json)
+                $jsonContent = Get-Content -Path $historyPath -Raw | ConvertFrom-Json
+                # S'assurer qu'on a un tableau d'objets valides
+                foreach ($item in $jsonContent) {
+                    if ($item.Timestamp -and $item.PSObject.Properties['CPU']) {
+                        [void]$historyList.Add($item)
+                    }
+                }
             } catch {
-                $historyData = @()
+                # Fichier corrompu, on repart de zero
+                $historyList.Clear()
             }
         }
 
         # Ajout nouvelle entree
         $newEntry = [PSCustomObject]@{
-            Timestamp = $timestamp
-            CPU = $cpuValue
-            MemoryPercent = $memoryPercent
+            Timestamp       = $timestamp
+            CPU             = $cpuValue
+            MemoryPercent   = $memoryPercent
             MemoryAvailable = $memoryValue
-            HealthScore = $healthScore
+            HealthScore     = $healthScore
+        }
+        [void]$historyList.Add($newEntry)
+
+        # Garder les 48 dernieres entrees
+        while ($historyList.Count -gt 48) {
+            $historyList.RemoveAt(0)
         }
 
-        $historyData = @($historyData) + $newEntry | Select-Object -Last 48
-        $historyData | ConvertTo-Json -Depth 5 | Set-Content -Path $historyPath -Encoding UTF8
+        # Sauvegarder en JSON (forcer le tableau)
+        $jsonOutput = ConvertTo-Json -InputObject @($historyList) -Depth 3
+        Set-Content -Path $historyPath -Value $jsonOutput -Encoding UTF8
 
         # Preparation donnees Chart.js
-        $historyLabels = ($historyData | ForEach-Object {
+        $historyLabels = ($historyList | ForEach-Object {
             if ($_.Timestamp) { "'$(($_.Timestamp -split ' ')[1].Substring(0,5))'" } else { "'--:--'" }
         }) -join ","
-        $historyCpu = ($historyData | ForEach-Object { if ($_.CPU) { $_.CPU } else { 0 } }) -join ","
-        $historyMem = ($historyData | ForEach-Object { if ($_.MemoryPercent) { $_.MemoryPercent } else { 0 } }) -join ","
-        $historyHealth = ($historyData | ForEach-Object { if ($_.HealthScore) { $_.HealthScore } else { 100 } }) -join ","
+        $historyCpu = ($historyList | ForEach-Object { if ($null -ne $_.CPU) { $_.CPU } else { 0 } }) -join ","
+        $historyMem = ($historyList | ForEach-Object { if ($null -ne $_.MemoryPercent) { [math]::Max(0, $_.MemoryPercent) } else { 0 } }) -join ","
+        $historyHealth = ($historyList | ForEach-Object { if ($null -ne $_.HealthScore) { $_.HealthScore } else { 100 } }) -join ","
 
         $diskLabelsStr = $diskLabels -join ","
         $diskUsedStr = $diskUsedData -join ","
